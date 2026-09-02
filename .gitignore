@@ -1,0 +1,32 @@
+venv# Environment variables
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+venv/
+.venv/
+
+# Streamlit
+.streamlit/secrets.toml
+
+analytics/*.csv
+
+
+# Generated invoices
+invoices/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
