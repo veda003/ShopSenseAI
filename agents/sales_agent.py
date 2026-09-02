@@ -26,10 +26,38 @@ if AGENTS_DIR not in sys.path:
 
 load_dotenv()
 
-api_key = os.getenv("GEMINI_API_KEY")
+# Local development:
+#   GEMINI_API_KEY in .env
+#
+# Streamlit Cloud:
+#   GEMINI_API_KEY in App Settings -> Secrets
+#
+# Streamlit Secrets are checked first, then .env / environment
+# variables are used as a local-development fallback.
+
+api_key = None
+
+try:
+    import streamlit as st
+
+    api_key = st.secrets.get(
+        "GEMINI_API_KEY"
+    )
+
+except Exception:
+    api_key = None
 
 if not api_key:
-    raise ValueError("GEMINI_API_KEY not found in .env")
+    api_key = os.getenv(
+        "GEMINI_API_KEY"
+    )
+
+if not api_key:
+    raise ValueError(
+        "GEMINI_API_KEY is not configured. "
+        "Add GEMINI_API_KEY to Streamlit Cloud Secrets "
+        "or to your local .env file."
+    )
 
 
 # ============================================================
