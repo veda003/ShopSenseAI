@@ -69,15 +69,55 @@ from agents.sales_entry import (
 # ============================================================
 
 def get_connection():
-    """
-    Create a MySQL connection.
-    """
+
+    import streamlit as st
+
+    # --------------------------------------------------------
+    # Read Streamlit Cloud secrets when available
+    # Otherwise use local .env values
+    # --------------------------------------------------------
+
+    try:
+        host = st.secrets.get(
+            "MYSQL_HOST",
+            os.getenv("MYSQL_HOST")
+        )
+
+        port = st.secrets.get(
+            "MYSQL_PORT",
+            os.getenv("MYSQL_PORT", 3306)
+        )
+
+        user = st.secrets.get(
+            "MYSQL_USER",
+            os.getenv("MYSQL_USER")
+        )
+
+        password = st.secrets.get(
+            "MYSQL_PASSWORD",
+            os.getenv("MYSQL_PASSWORD")
+        )
+
+        database = st.secrets.get(
+            "MYSQL_DATABASE",
+            os.getenv("MYSQL_DATABASE")
+        )
+
+    except Exception:
+        # Local .env fallback
+        host = os.getenv("MYSQL_HOST")
+        port = os.getenv("MYSQL_PORT", 3306)
+        user = os.getenv("MYSQL_USER")
+        password = os.getenv("MYSQL_PASSWORD")
+        database = os.getenv("MYSQL_DATABASE")
 
     return mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST"),
-        user=os.getenv("MYSQL_USER"),
-        password=os.getenv("MYSQL_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE")
+        host=host,
+        port=int(port),
+        user=user,
+        password=password,
+        database=database,
+        ssl_disabled=False
     )
 
 
