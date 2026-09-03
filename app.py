@@ -94,6 +94,99 @@ from agents.permissions import (
 )
 
 
+
+# ============================================================
+# PERFORMANCE / DATA CACHING
+# ============================================================
+
+# Read-only analytics are cached briefly because the deployed app
+# connects to Aiven MySQL over the internet. Write operations such
+# as New Sale and Restock are NOT cached.
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_total_revenue():
+    return get_total_revenue()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_total_transactions():
+    return get_total_transactions()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_top_products():
+    return get_top_products()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_revenue_by_hour():
+    return get_revenue_by_hour()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_payment_analysis():
+    return get_payment_analysis()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_profit_summary():
+    return get_profit_summary()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_profit_by_product(limit=10):
+    return get_profit_by_product(limit)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_monthly_profit(months=12):
+    return get_monthly_profit(months)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_inventory_summary():
+    return get_inventory_summary()
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def cached_sales_forecast():
+    return get_sales_forecast()
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def cached_business_insights():
+    return get_business_insights()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_date_range_summary(start_date, end_date):
+    return get_date_range_summary(start_date, end_date)
+
+
+# ============================================================
+# CACHE CLEARING
+# ============================================================
+
+def clear_read_cache():
+    """Clear cached read-only analytics after a database write."""
+    try:
+        cached_total_revenue.clear()
+        cached_total_transactions.clear()
+        cached_top_products.clear()
+        cached_revenue_by_hour.clear()
+        cached_payment_analysis.clear()
+        cached_profit_summary.clear()
+        cached_profit_by_product.clear()
+        cached_monthly_profit.clear()
+        cached_inventory_summary.clear()
+        cached_sales_forecast.clear()
+        cached_business_insights.clear()
+        cached_date_range_summary.clear()
+    except Exception:
+        # Cache helpers may not all exist during the first import.
+        pass
+
+
 # ============================================================
 # PAGE CONFIG
 # ============================================================
@@ -1123,6 +1216,7 @@ if st.sidebar.button(
     use_container_width=True
 ):
 
+    clear_read_cache()
     st.rerun()
 
 
@@ -1154,41 +1248,41 @@ if page == "📊 Dashboard":
     try:
 
         total_revenue = float(
-            get_total_revenue() or 0
+            cached_total_revenue() or 0
         )
 
         total_transactions = int(
-            get_total_transactions() or 0
+            cached_total_transactions() or 0
         )
 
-        top_products = get_top_products()
+        top_products = cached_top_products()
 
         revenue_by_hour = (
-            get_revenue_by_hour()
+            cached_revenue_by_hour()
         )
 
         payment_analysis = (
-            get_payment_analysis()
+            cached_payment_analysis()
         )
 
         profit_summary = (
-            get_profit_summary()
+            cached_profit_summary()
         )
 
         product_profit = (
-            get_profit_by_product(10)
+            cached_profit_by_product(10)
         )
 
         monthly_profit = (
-            get_monthly_profit(12)
+            cached_monthly_profit(12)
         )
 
         inventory_summary = (
-            get_inventory_summary()
+            cached_inventory_summary()
         )
 
         forecast_result = (
-            get_sales_forecast()
+            cached_sales_forecast()
         )
 
     except Exception as e:
@@ -5032,6 +5126,9 @@ elif page == "🛒 New Sale":
                     )
 
 
+                    # Clear cached analytics because the database changed.
+                    clear_read_cache()
+
                     # Clear cart only after successful sale
                     st.session_state.sale_cart = []
 
@@ -5108,7 +5205,7 @@ elif page == "📈 Sales Forecast":
     try:
 
         forecast_result = (
-            get_sales_forecast()
+            cached_sales_forecast()
         )
 
 
@@ -5513,145 +5610,31 @@ elif page == "💡 Business Insights":
     try:
 
         # ====================================================
-        # LOAD ANALYTICS
+        # LOAD CACHED ANALYTICS
         # ====================================================
+        # Business Insights previously calculated these metrics,
+        # then calculated them again inside get_business_insights(),
+        # and then generated another enhanced summary. That caused
+        # many repeated cloud database / AI calls.
 
-        total_revenue = (
-            get_total_revenue()
-        )
+        total_revenue = cached_total_revenue()
+        total_transactions = cached_total_transactions()
+        profit_summary = cached_profit_summary()
+        profit_by_product = cached_profit_by_product(10)
+        inventory_summary = cached_inventory_summary()
+        forecast = cached_sales_forecast()
 
-        total_transactions = (
-            get_total_transactions()
-        )
+        insights = cached_business_insights()
 
-        top_products = (
-            get_top_products()
-        )
-
-        revenue_by_hour = (
-            get_revenue_by_hour()
-        )
-
-        payment_analysis = (
-            get_payment_analysis()
-        )
-
-        anomalies = (
-            get_sales_anomalies()
-        )
-
-        forecast = (
-            get_sales_forecast()
-        )
-
-        profit_summary = (
-            get_profit_summary()
-        )
-
-        profit_by_product = (
-            get_profit_by_product(10)
-        )
-
-        inventory_summary = (
-            get_inventory_summary()
-        )
-
-
-        # ====================================================
-        # BUSINESS SUMMARY
-        # ====================================================
-
-        insights = (
-            get_business_insights()
-        )
-
-
-        if isinstance(
-            insights,
-            dict
-        ):
-
-            insight_list = (
-                insights.get(
-                    "insights",
-                    []
-                )
-            )
-
-            recommendation_list = (
-                insights.get(
-                    "recommendations",
-                    []
-                )
-            )
-
-        elif isinstance(
-            insights,
-            list
-        ):
-
+        if isinstance(insights, dict):
+            insight_list = insights.get("insights", [])
+            recommendation_list = insights.get("recommendations", [])
+        elif isinstance(insights, list):
             insight_list = insights
-
             recommendation_list = []
-
         else:
-
             insight_list = []
-
             recommendation_list = []
-
-
-        # ====================================================
-        # ENHANCED BUSINESS SUMMARY
-        # ====================================================
-
-        try:
-
-            from analytics.business_insights import (
-                generate_business_summary
-            )
-
-
-            enhanced_summary = (
-                generate_business_summary(
-                    total_revenue=total_revenue,
-                    total_transactions=total_transactions,
-                    top_products=top_products,
-                    revenue_by_hour=revenue_by_hour,
-                    payment_analysis=payment_analysis,
-                    anomalies=anomalies,
-                    forecast=forecast,
-                    profit_summary=profit_summary,
-                    profit_by_product=profit_by_product,
-                    inventory_summary=inventory_summary,
-                )
-            )
-
-
-            if isinstance(
-                enhanced_summary,
-                dict
-            ):
-
-                insight_list = (
-                    enhanced_summary.get(
-                        "insights",
-                        insight_list
-                    )
-                )
-
-                recommendation_list = (
-                    enhanced_summary.get(
-                        "recommendations",
-                        recommendation_list
-                    )
-                )
-
-
-        except Exception:
-
-            pass
-
 
         # ====================================================
         # FINANCIAL OVERVIEW
