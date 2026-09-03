@@ -320,8 +320,8 @@ def get_today_sales():
 
             FROM sales
 
-            WHERE DATE(sale_datetime)
-                = CURDATE()
+            WHERE sale_datetime >= CURDATE()
+            AND sale_datetime < CURDATE() + INTERVAL 1 DAY
             """
         )
 
@@ -360,8 +360,8 @@ def get_yesterday_sales():
 
             FROM sales
 
-            WHERE DATE(sale_datetime)
-                = CURDATE() - INTERVAL 1 DAY
+            WHERE sale_datetime >= CURDATE() - INTERVAL 1 DAY
+            AND sale_datetime < CURDATE()
             """
         )
 
@@ -400,13 +400,19 @@ def get_this_week_sales():
 
             FROM sales
 
-            WHERE YEARWEEK(
-                sale_datetime,
-                1
-            ) = YEARWEEK(
-                CURDATE(),
-                1
-            )
+            WHERE sale_datetime >=
+                DATE_SUB(
+                    CURDATE(),
+                    INTERVAL WEEKDAY(CURDATE()) DAY
+                )
+            AND sale_datetime <
+                DATE_ADD(
+                    DATE_SUB(
+                        CURDATE(),
+                        INTERVAL WEEKDAY(CURDATE()) DAY
+                    ),
+                    INTERVAL 7 DAY
+                )
             """
         )
 
@@ -445,11 +451,13 @@ def get_this_month_sales():
 
             FROM sales
 
-            WHERE YEAR(sale_datetime)
-                = YEAR(CURDATE())
-
-            AND MONTH(sale_datetime)
-                = MONTH(CURDATE())
+            WHERE sale_datetime >=
+                DATE_FORMAT(CURDATE(), '%Y-%m-01')
+            AND sale_datetime <
+                DATE_ADD(
+                    DATE_FORMAT(CURDATE(), '%Y-%m-01'),
+                    INTERVAL 1 MONTH
+                )
             """
         )
 
@@ -488,16 +496,15 @@ def get_last_month_sales():
 
             FROM sales
 
-            WHERE YEAR(sale_datetime)
-                = YEAR(
-                    CURDATE()
-                    - INTERVAL 1 MONTH
+            WHERE sale_datetime >=
+                DATE_FORMAT(
+                    CURDATE() - INTERVAL 1 MONTH,
+                    '%Y-%m-01'
                 )
-
-            AND MONTH(sale_datetime)
-                = MONTH(
-                    CURDATE()
-                    - INTERVAL 1 MONTH
+            AND sale_datetime <
+                DATE_FORMAT(
+                    CURDATE(),
+                    '%Y-%m-01'
                 )
             """
         )
@@ -548,13 +555,19 @@ def get_best_product_this_week():
                 ON si.sale_id =
                    s.sale_id
 
-            WHERE YEARWEEK(
-                s.sale_datetime,
-                1
-            ) = YEARWEEK(
-                CURDATE(),
-                1
-            )
+            WHERE s.sale_datetime >=
+                DATE_SUB(
+                    CURDATE(),
+                    INTERVAL WEEKDAY(CURDATE()) DAY
+                )
+            AND s.sale_datetime <
+                DATE_ADD(
+                    DATE_SUB(
+                        CURDATE(),
+                        INTERVAL WEEKDAY(CURDATE()) DAY
+                    ),
+                    INTERVAL 7 DAY
+                )
 
             GROUP BY
                 p.product_id,
@@ -672,6 +685,11 @@ def get_date_range_summary(
             "Start date cannot be after end date."
         )
 
+    # Use an exclusive upper boundary so MySQL can
+    # efficiently use an index on sale_datetime.
+
+    end_exclusive = end + timedelta(days=1)
+
     connection = get_connection()
     cursor = connection.cursor(
         dictionary=True
@@ -682,6 +700,7 @@ def get_date_range_summary(
         cursor.execute(
             """
             SELECT
+
                 COALESCE(
                     SUM(total_amount),
                     0
@@ -691,12 +710,13 @@ def get_date_range_summary(
 
             FROM sales
 
-            WHERE DATE(sale_datetime)
-                BETWEEN %s AND %s
+            WHERE sale_datetime >= %s
+
+            AND sale_datetime < %s
             """,
             (
                 start,
-                end
+                end_exclusive
             )
         )
 
@@ -708,7 +728,6 @@ def get_date_range_summary(
 
         cursor.close()
         connection.close()
-
 
 # ============================================================
 # DAILY SALES BY DATE RANGE
@@ -728,6 +747,8 @@ def get_sales_by_date_range(
             "Start date cannot be after end date."
         )
 
+    end_exclusive = end + timedelta(days=1)
+
     connection = get_connection()
     cursor = connection.cursor(
         dictionary=True
@@ -738,6 +759,7 @@ def get_sales_by_date_range(
         cursor.execute(
             """
             SELECT
+
                 DATE(sale_datetime)
                     AS sale_date,
 
@@ -751,8 +773,9 @@ def get_sales_by_date_range(
 
             FROM sales
 
-            WHERE DATE(sale_datetime)
-                BETWEEN %s AND %s
+            WHERE sale_datetime >= %s
+
+            AND sale_datetime < %s
 
             GROUP BY
                 DATE(sale_datetime)
@@ -762,7 +785,7 @@ def get_sales_by_date_range(
             """,
             (
                 start,
-                end
+                end_exclusive
             )
         )
 
@@ -774,8 +797,6 @@ def get_sales_by_date_range(
 
         cursor.close()
         connection.close()
-
-
 # ============================================================
 # PREVIOUS PERIOD COMPARISON
 # ============================================================
@@ -934,6 +955,8 @@ def get_top_products_by_date_range(
             "Start date cannot be after end date."
         )
 
+    end_exclusive = end + timedelta(days=1)
+
     connection = get_connection()
     cursor = connection.cursor(
         dictionary=True
@@ -964,8 +987,8 @@ def get_top_products_by_date_range(
                 ON si.sale_id =
                    s.sale_id
 
-            WHERE DATE(s.sale_datetime)
-                BETWEEN %s AND %s
+            WHERE s.sale_datetime >= %s
+            AND s.sale_datetime < %s
 
             GROUP BY
                 p.product_id,
@@ -978,7 +1001,7 @@ def get_top_products_by_date_range(
             """,
             (
                 start,
-                end
+                end_exclusive
             )
         )
 
@@ -1010,6 +1033,8 @@ def get_payment_analysis_by_date_range(
             "Start date cannot be after end date."
         )
 
+    end_exclusive = end + timedelta(days=1)
+
     connection = get_connection()
     cursor = connection.cursor(
         dictionary=True
@@ -1032,8 +1057,8 @@ def get_payment_analysis_by_date_range(
 
             FROM sales
 
-            WHERE DATE(sale_datetime)
-                BETWEEN %s AND %s
+            WHERE sale_datetime >= %s
+            AND sale_datetime < %s
 
             GROUP BY
                 payment_method
@@ -1043,7 +1068,7 @@ def get_payment_analysis_by_date_range(
             """,
             (
                 start,
-                end
+                end_exclusive
             )
         )
 
@@ -1075,6 +1100,8 @@ def get_revenue_by_hour_date_range(
             "Start date cannot be after end date."
         )
 
+    end_exclusive = end + timedelta(days=1)
+
     connection = get_connection()
     cursor = connection.cursor(
         dictionary=True
@@ -1098,8 +1125,8 @@ def get_revenue_by_hour_date_range(
 
             FROM sales
 
-            WHERE DATE(sale_datetime)
-                BETWEEN %s AND %s
+            WHERE sale_datetime >= %s
+            AND sale_datetime < %s
 
             GROUP BY
                 HOUR(sale_datetime)
@@ -1109,7 +1136,7 @@ def get_revenue_by_hour_date_range(
             """,
             (
                 start,
-                end
+                end_exclusive
             )
         )
 
@@ -1399,47 +1426,30 @@ def get_profit_margin():
 def get_profit_summary():
 
     connection = get_connection()
-    cursor = connection.cursor()
+    cursor = connection.cursor(dictionary=True)
 
     try:
 
-        # --------------------------------------------------------
-        # TOTAL REVENUE
-        # Use sales.total_amount so it matches get_total_revenue()
-        # --------------------------------------------------------
-
         cursor.execute(
             """
             SELECT
+
                 COALESCE(
-                    SUM(total_amount),
+                    (
+                        SELECT SUM(total_amount)
+                        FROM sales
+                    ),
                     0
-                )
-            FROM sales
-            """
-        )
+                ) AS total_revenue,
 
-        revenue_result = cursor.fetchone()
-
-        revenue = float(
-            revenue_result[0] or 0
-        )
-
-        # --------------------------------------------------------
-        # TOTAL COST
-        # Calculate product cost from sale items
-        # --------------------------------------------------------
-
-        cursor.execute(
-            """
-            SELECT
                 COALESCE(
                     SUM(
                         si.quantity *
                         COALESCE(p.cost_price, 0)
                     ),
                     0
-                )
+                ) AS total_cost
+
             FROM sale_items si
 
             INNER JOIN products p
@@ -1447,21 +1457,17 @@ def get_profit_summary():
             """
         )
 
-        cost_result = cursor.fetchone()
+        result = cursor.fetchone()
 
-        cost = float(
-            cost_result[0] or 0
+        revenue = float(
+            result.get("total_revenue", 0) or 0
         )
 
-        # --------------------------------------------------------
-        # TOTAL PROFIT
-        # --------------------------------------------------------
+        cost = float(
+            result.get("total_cost", 0) or 0
+        )
 
         profit = revenue - cost
-
-        # --------------------------------------------------------
-        # PROFIT MARGIN
-        # --------------------------------------------------------
 
         margin = (
             (profit / revenue) * 100
@@ -1497,6 +1503,9 @@ def get_profit_by_product(limit=10):
 
     if limit <= 0:
         limit = 10
+
+    if limit > 100:
+        limit = 100
 
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
@@ -1589,17 +1598,96 @@ def get_most_profitable_products(limit=10):
 
 def get_least_profitable_products(limit=10):
 
-    rows = get_profit_by_product(1000)
+    try:
+        limit = int(limit)
+    except (ValueError, TypeError):
+        limit = 10
 
-    rows = sorted(
-        rows,
-        key=lambda row: float(
-            row.get("profit", 0) or 0
-        )
-    )
+    if limit <= 0:
+        limit = 10
 
-    return rows[:max(1, int(limit))]
+    if limit > 100:
+        limit = 100
 
+    connection = get_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+
+        query = f"""
+            SELECT
+                p.product_id,
+                p.product_name,
+
+                SUM(si.quantity)
+                    AS quantity_sold,
+
+                COALESCE(
+                    SUM(si.total),
+                    0
+                ) AS revenue,
+
+                COALESCE(
+                    SUM(
+                        si.quantity *
+                        COALESCE(p.cost_price, 0)
+                    ),
+                    0
+                ) AS cost,
+
+                COALESCE(
+                    SUM(
+                        si.total -
+                        (
+                            si.quantity *
+                            COALESCE(p.cost_price, 0)
+                        )
+                    ),
+                    0
+                ) AS profit
+
+            FROM sale_items si
+
+            INNER JOIN products p
+                ON si.product_id =
+                   p.product_id
+
+            GROUP BY
+                p.product_id,
+                p.product_name
+
+            ORDER BY
+                profit ASC
+
+            LIMIT {limit}
+        """
+
+        cursor.execute(query)
+
+        rows = cursor.fetchall()
+
+        for row in rows:
+
+            revenue = float(
+                row.get("revenue", 0) or 0
+            )
+
+            profit = float(
+                row.get("profit", 0) or 0
+            )
+
+            row["profit_margin"] = (
+                (profit / revenue) * 100
+                if revenue > 0
+                else 0.0
+            )
+
+        return make_json_safe(rows)
+
+    finally:
+
+        cursor.close()
+        connection.close()
 
 # ============================================================
 # DAILY PROFIT
@@ -1614,6 +1702,9 @@ def get_daily_profit(days=30):
 
     if days <= 0:
         days = 30
+
+    if days > 366:
+        days = 366
 
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
@@ -1656,9 +1747,10 @@ def get_daily_profit(days=30):
             INNER JOIN products p
                 ON si.product_id = p.product_id
 
-            WHERE DATE(s.sale_datetime)
-                >= CURDATE()
-                   - INTERVAL {days - 1} DAY
+            WHERE s.sale_datetime >=
+                CURDATE() - INTERVAL {days - 1} DAY
+            AND s.sale_datetime <
+                CURDATE() + INTERVAL 1 DAY
 
             GROUP BY DATE(s.sale_datetime)
 
@@ -1667,9 +1759,25 @@ def get_daily_profit(days=30):
 
         cursor.execute(query)
 
-        return make_json_safe(
-            cursor.fetchall()
-        )
+        rows = cursor.fetchall()
+
+        for row in rows:
+
+            revenue = float(
+                row.get("revenue", 0) or 0
+            )
+
+            profit = float(
+                row.get("profit", 0) or 0
+            )
+
+            row["profit_margin"] = (
+                (profit / revenue) * 100
+                if revenue > 0
+                else 0.0
+            )
+
+        return make_json_safe(rows)
 
     finally:
         cursor.close()
@@ -1689,6 +1797,9 @@ def get_monthly_profit(months=12):
 
     if months <= 0:
         months = 12
+
+    if months > 60:
+        months = 60
 
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
@@ -1802,6 +1913,8 @@ def get_profit_by_date_range(start_date, end_date):
             "Start date cannot be after end date."
         )
 
+    end_exclusive = end + timedelta(days=1)
+
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 
@@ -1847,10 +1960,10 @@ def get_profit_by_date_range(start_date, end_date):
             INNER JOIN products p
                 ON si.product_id = p.product_id
 
-            WHERE DATE(s.sale_datetime)
-                BETWEEN %s AND %s
+            WHERE s.sale_datetime >= %s
+            AND s.sale_datetime < %s
             """,
-            (start, end)
+            (start, end_exclusive)
         )
 
         result = cursor.fetchone()
@@ -1960,20 +2073,18 @@ def get_sales_forecast():
 
 def get_business_insights():
     """
-    Build the complete ShopSense AI business-intelligence summary.
+    Build the ShopSense AI business-intelligence summary.
 
-    Includes:
-    - Revenue
-    - Transactions
-    - Top products
-    - Peak sales hour
-    - Payment analysis
-    - Sales anomalies
-    - Sales forecast
-    - Profit & Loss
-    - Product profitability
-    - Inventory health
+    Optimized version:
+    - Uses fewer repeated database connections
+    - Keeps all existing business metrics
+    - Keeps the existing AI business summary
+    - Keeps the same return structure
     """
+
+    # --------------------------------------------------------
+    # BASIC SALES METRICS
+    # --------------------------------------------------------
 
     total_revenue = get_total_revenue()
 
@@ -1984,6 +2095,10 @@ def get_business_insights():
     revenue_by_hour = get_revenue_by_hour()
 
     payment_analysis = get_payment_analysis()
+
+    # --------------------------------------------------------
+    # AI / ANALYTICS
+    # --------------------------------------------------------
 
     anomalies = get_sales_anomalies()
 
@@ -2004,7 +2119,7 @@ def get_business_insights():
     inventory_summary = get_inventory_summary()
 
     # --------------------------------------------------------
-    # GENERATE ENHANCED BUSINESS SUMMARY
+    # GENERATE BUSINESS SUMMARY
     # --------------------------------------------------------
 
     summary = generate_business_summary(
@@ -2030,25 +2145,34 @@ def get_business_insights():
         inventory_summary=inventory_summary
     )
 
-    # Add the raw business metrics too, so the AI Assistant
-    # and Dashboard can access the detailed values directly.
+    # --------------------------------------------------------
+    # ADD RAW METRICS
+    # --------------------------------------------------------
 
     if isinstance(summary, dict):
 
-        summary["profit_summary"] = profit_summary
+        summary.update({
 
-        summary["profit_by_product"] = profit_by_product
+            "profit_summary":
+                profit_summary,
 
-        summary["inventory_summary"] = inventory_summary
+            "profit_by_product":
+                profit_by_product,
 
-        summary["forecast"] = forecast
+            "inventory_summary":
+                inventory_summary,
 
-        summary["total_revenue"] = total_revenue
+            "forecast":
+                forecast,
 
-        summary["total_transactions"] = total_transactions
+            "total_revenue":
+                total_revenue,
+
+            "total_transactions":
+                total_transactions
+        })
 
     return make_json_safe(summary)
-
 
 # ============================================================
 # FIND PRODUCT FOR SALE
@@ -2273,6 +2397,7 @@ def record_new_sale(
 # INVENTORY SCHEMA CHECK
 # ============================================================
 
+@st.cache_resource
 def ensure_inventory_columns():
 
     connection = get_connection()
@@ -3070,6 +3195,9 @@ def get_sales_history(
 
     if limit <= 0:
         limit = 100
+
+    if limit > 500:
+        limit = 500
 
     connection = get_connection()
     cursor = connection.cursor(
