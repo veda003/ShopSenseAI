@@ -65,61 +65,108 @@ from agents.sales_entry import (
 
 
 # ============================================================
-# MYSQL CONNECTION
+# MYSQL CONNECTION POOL
 # ============================================================
 
-def get_connection():
+import streamlit as st
+from mysql.connector import pooling
 
-    import streamlit as st
 
-    # --------------------------------------------------------
-    # Read Streamlit Cloud secrets when available
-    # Otherwise use local .env values
-    # --------------------------------------------------------
+# ------------------------------------------------------------
+# READ DATABASE SETTINGS
+# ------------------------------------------------------------
 
-    try:
-        host = st.secrets.get(
-            "MYSQL_HOST",
-            os.getenv("MYSQL_HOST")
-        )
+try:
 
-        port = st.secrets.get(
-            "MYSQL_PORT",
-            os.getenv("MYSQL_PORT", 3306)
-        )
+    MYSQL_HOST = st.secrets.get(
+        "MYSQL_HOST",
+        os.getenv("MYSQL_HOST")
+    )
 
-        user = st.secrets.get(
-            "MYSQL_USER",
-            os.getenv("MYSQL_USER")
-        )
+    MYSQL_PORT = st.secrets.get(
+        "MYSQL_PORT",
+        os.getenv("MYSQL_PORT", 3306)
+    )
 
-        password = st.secrets.get(
-            "MYSQL_PASSWORD",
-            os.getenv("MYSQL_PASSWORD")
-        )
+    MYSQL_USER = st.secrets.get(
+        "MYSQL_USER",
+        os.getenv("MYSQL_USER")
+    )
 
-        database = st.secrets.get(
-            "MYSQL_DATABASE",
-            os.getenv("MYSQL_DATABASE")
-        )
+    MYSQL_PASSWORD = st.secrets.get(
+        "MYSQL_PASSWORD",
+        os.getenv("MYSQL_PASSWORD")
+    )
 
-    except Exception:
-        # Local .env fallback
-        host = os.getenv("MYSQL_HOST")
-        port = os.getenv("MYSQL_PORT", 3306)
-        user = os.getenv("MYSQL_USER")
-        password = os.getenv("MYSQL_PASSWORD")
-        database = os.getenv("MYSQL_DATABASE")
+    MYSQL_DATABASE = st.secrets.get(
+        "MYSQL_DATABASE",
+        os.getenv("MYSQL_DATABASE")
+    )
 
-    return mysql.connector.connect(
+except Exception:
+
+    MYSQL_HOST = os.getenv("MYSQL_HOST")
+    MYSQL_PORT = os.getenv("MYSQL_PORT", 3306)
+    MYSQL_USER = os.getenv("MYSQL_USER")
+    MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
+    MYSQL_DATABASE = os.getenv("MYSQL_DATABASE")
+
+
+# ------------------------------------------------------------
+# CREATE CONNECTION POOL ONCE
+# ------------------------------------------------------------
+
+@st.cache_resource
+def create_pool(
+    host,
+    port,
+    user,
+    password,
+    database
+):
+
+    return pooling.MySQLConnectionPool(
+
+        pool_name="shopsense_pool",
+
+        pool_size=5,
+
+        pool_reset_session=True,
+
         host=host,
+
         port=int(port),
+
         user=user,
+
         password=password,
+
         database=database,
+
         ssl_disabled=False
     )
 
+
+# ------------------------------------------------------------
+# GET CONNECTION FROM POOL
+# ------------------------------------------------------------
+
+def get_connection():
+
+    pool = create_pool(
+
+        MYSQL_HOST,
+
+        MYSQL_PORT,
+
+        MYSQL_USER,
+
+        MYSQL_PASSWORD,
+
+        MYSQL_DATABASE
+    )
+
+    return pool.get_connection()
 
 # ============================================================
 # JSON SAFE CONVERSION
