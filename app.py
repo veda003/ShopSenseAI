@@ -7,6 +7,8 @@ import streamlit as st
 import pandas as pd
 
 
+
+
 # ============================================================
 # PROJECT ROOT
 # ============================================================
@@ -20,79 +22,57 @@ if PROJECT_ROOT not in sys.path:
 
 
 # ============================================================
-# IMPORT SQL TOOLS
+# LIGHTWEIGHT LOGIN IMPORT
 # ============================================================
 
-from agents.sql_tools import (
-    # Basic Sales
-    get_total_revenue,
-    get_total_transactions,
-
-    # Date Sales
-    get_today_sales,
-    get_yesterday_sales,
-    get_this_week_sales,
-    get_this_month_sales,
-    get_last_month_sales,
-
-    # Product / Sales Analysis
-    get_best_product_this_week,
-    compare_this_month_last_month,
-    get_top_products,
-    get_revenue_by_hour,
-    get_payment_analysis,
-
-    # Advanced Analytics
-    get_sales_anomalies,
-    get_sales_forecast,
-    get_business_insights,
-
-    # Date Range
-    get_sales_by_date_range,
-    get_date_range_summary,
-    get_top_products_by_date_range,
-    get_payment_analysis_by_date_range,
-    get_revenue_by_hour_date_range,
-    compare_date_range_with_previous,
-
-    # Sales History
-    get_sales_history,
-    get_sale_details,
-
-    # Inventory
-    get_inventory,
-    get_low_stock_products,
-    get_out_of_stock_products,
-    get_inventory_summary,
-    get_product_stock,
-    restock_product,
-    update_reorder_level,
-
-    # Profit & Loss
-    get_profit_summary,
-    get_profit_by_product,
-    get_least_profitable_products,
-    get_daily_profit,
-    get_monthly_profit,
-    get_profit_by_date_range,
-
-    # Sales Entry
-    record_new_sale,
-)
-
-from agents.sales_entry import add_sale
-from agents.sales_agent import create_chat, ask_ai
+# Keep only authentication loaded before login. Heavy application modules
+# are loaded after successful login so the login screen appears faster.
 from agents.auth import authenticate_user
 
-from utils.invoice import generate_invoice
 
-from agents.permissions import (
-    is_admin,
-    can_create_sale,
-    can_view_inventory,
-    can_use_ai,
-)
+def load_app_modules():
+    """Load heavy application modules only after authentication."""
+    global get_total_revenue, get_total_transactions
+    global get_today_sales, get_yesterday_sales, get_this_week_sales
+    global get_this_month_sales, get_last_month_sales
+    global get_best_product_this_week, compare_this_month_last_month
+    global get_top_products, get_revenue_by_hour, get_payment_analysis
+    global get_sales_anomalies, get_sales_forecast, get_business_insights
+    global get_sales_by_date_range, get_date_range_summary
+    global get_top_products_by_date_range, get_payment_analysis_by_date_range
+    global get_revenue_by_hour_date_range, compare_date_range_with_previous
+    global get_sales_history, get_sale_details
+    global get_inventory, get_low_stock_products, get_out_of_stock_products
+    global get_inventory_summary, get_product_stock, restock_product
+    global update_reorder_level, get_profit_summary, get_profit_by_product
+    global get_least_profitable_products, get_daily_profit, get_monthly_profit
+    global get_profit_by_date_range, record_new_sale
+    global add_sale, create_chat, ask_ai, generate_invoice
+    global is_admin, can_create_sale, can_view_inventory, can_use_ai
 
+    from agents.sql_tools import (
+        get_total_revenue, get_total_transactions,
+        get_today_sales, get_yesterday_sales, get_this_week_sales,
+        get_this_month_sales, get_last_month_sales,
+        get_best_product_this_week, compare_this_month_last_month,
+        get_top_products, get_revenue_by_hour, get_payment_analysis,
+        get_sales_anomalies, get_sales_forecast, get_business_insights,
+        get_sales_by_date_range, get_date_range_summary,
+        get_top_products_by_date_range, get_payment_analysis_by_date_range,
+        get_revenue_by_hour_date_range, compare_date_range_with_previous,
+        get_sales_history, get_sale_details,
+        get_inventory, get_low_stock_products, get_out_of_stock_products,
+        get_inventory_summary, get_product_stock, restock_product,
+        update_reorder_level, get_profit_summary, get_profit_by_product,
+        get_least_profitable_products, get_daily_profit, get_monthly_profit,
+        get_profit_by_date_range, record_new_sale
+    )
+    from agents.sales_entry import add_sale
+    from agents.sales_agent import create_chat, ask_ai
+    from utils.invoice import generate_invoice
+    from agents.permissions import (
+        is_admin, can_create_sale, can_view_inventory, can_use_ai
+    )
 
 
 # ============================================================
@@ -102,6 +82,31 @@ from agents.permissions import (
 # Read-only analytics are cached briefly because the deployed app
 # connects to Aiven MySQL over the internet. Write operations such
 # as New Sale and Restock are NOT cached.
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_today_sales():
+    return get_today_sales()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_yesterday_sales():
+    return get_yesterday_sales()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_this_week_sales():
+    return get_this_week_sales()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_this_month_sales():
+    return get_this_month_sales()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_best_product_this_week():
+    return get_best_product_this_week()
+
 
 @st.cache_data(ttl=300, show_spinner=False)
 def cached_total_revenue():
@@ -148,6 +153,26 @@ def cached_inventory_summary():
     return get_inventory_summary()
 
 
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_inventory():
+    return get_inventory()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_low_stock_products():
+    return get_low_stock_products()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_out_of_stock_products():
+    return get_out_of_stock_products()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_sales_history(limit=100):
+    return get_sales_history(limit)
+
+
 @st.cache_data(ttl=600, show_spinner=False)
 def cached_sales_forecast():
     return get_sales_forecast()
@@ -163,6 +188,51 @@ def cached_date_range_summary(start_date, end_date):
     return get_date_range_summary(start_date, end_date)
 
 
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_compare_date_range_with_previous(start_date, end_date):
+    return compare_date_range_with_previous(start_date, end_date)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_sales_by_date_range(start_date, end_date):
+    return get_sales_by_date_range(start_date, end_date)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_top_products_by_date_range(start_date, end_date):
+    return get_top_products_by_date_range(start_date, end_date)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_payment_analysis_by_date_range(start_date, end_date):
+    return get_payment_analysis_by_date_range(start_date, end_date)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_revenue_by_hour_date_range(start_date, end_date):
+    return get_revenue_by_hour_date_range(start_date, end_date)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_profit_by_date_range(start_date, end_date):
+    return get_profit_by_date_range(start_date, end_date)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_monthly_comparison():
+    return compare_this_month_last_month()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_least_profitable_products(limit=10):
+    return get_least_profitable_products(limit)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_daily_profit(days=30):
+    return get_daily_profit(days)
+
+
 # ============================================================
 # CACHE CLEARING
 # ============================================================
@@ -170,6 +240,11 @@ def cached_date_range_summary(start_date, end_date):
 def clear_read_cache():
     """Clear cached read-only analytics after a database write."""
     try:
+        cached_today_sales.clear()
+        cached_yesterday_sales.clear()
+        cached_this_week_sales.clear()
+        cached_this_month_sales.clear()
+        cached_best_product_this_week.clear()
         cached_total_revenue.clear()
         cached_total_transactions.clear()
         cached_top_products.clear()
@@ -179,9 +254,22 @@ def clear_read_cache():
         cached_profit_by_product.clear()
         cached_monthly_profit.clear()
         cached_inventory_summary.clear()
+        cached_inventory.clear()
+        cached_low_stock_products.clear()
+        cached_out_of_stock_products.clear()
+        cached_sales_history.clear()
         cached_sales_forecast.clear()
         cached_business_insights.clear()
         cached_date_range_summary.clear()
+        cached_compare_date_range_with_previous.clear()
+        cached_sales_by_date_range.clear()
+        cached_top_products_by_date_range.clear()
+        cached_payment_analysis_by_date_range.clear()
+        cached_revenue_by_hour_date_range.clear()
+        cached_profit_by_date_range.clear()
+        cached_monthly_comparison.clear()
+        cached_least_profitable_products.clear()
+        cached_daily_profit.clear()
     except Exception:
         # Cache helpers may not all exist during the first import.
         pass
@@ -1098,6 +1186,8 @@ if not st.session_state.logged_in:
                             result.get("role")
                         )
 
+                        load_app_modules()
+
                         st.success(
                             "Login successful!"
                         )
@@ -1135,6 +1225,10 @@ st.sidebar.success(
 st.sidebar.caption(
     f"Role: {st.session_state.role}"
 )
+
+
+# Load application modules only for authenticated sessions.
+load_app_modules()
 
 
 # ============================================================
@@ -1281,9 +1375,8 @@ if page == "📊 Dashboard":
             cached_inventory_summary()
         )
 
-        forecast_result = (
-            cached_sales_forecast()
-        )
+        # Forecast is loaded on demand below instead of during initial dashboard load.
+        forecast_result = None
 
     except Exception as e:
 
@@ -1755,148 +1848,93 @@ if page == "📊 Dashboard":
         "🔮 7-Day Sales Forecast"
     )
 
-    if (
-        isinstance(
-            forecast_result,
-            dict
-        )
-        and
-        forecast_result.get(
-            "status"
-        ) == "success"
-    ):
+    if "dashboard_forecast_loaded" not in st.session_state:
+        st.session_state["dashboard_forecast_loaded"] = False
 
-        forecast_data = (
-            forecast_result.get(
-                "forecast",
-                []
-            )
-        )
-
-        if forecast_data:
-
-            forecast_df = pd.DataFrame(
-                [
-                    {
-                        "Date":
-                            item.get(
-                                "date",
-                                ""
-                            ),
-
-                        "Predicted Revenue":
-                            float(
-                                item.get(
-                                    "predicted_revenue",
-                                    0
-                                ) or 0
-                            )
-                    }
-
-                    for item in forecast_data
-                ]
-            )
-
-            forecast_total = (
-                forecast_df[
-                    "Predicted Revenue"
-                ].sum()
-            )
-
-            forecast_average = (
-                forecast_df[
-                    "Predicted Revenue"
-                ].mean()
-            )
-
-            first_prediction = float(
-                forecast_df[
-                    "Predicted Revenue"
-                ].iloc[0]
-            )
-
-            last_prediction = float(
-                forecast_df[
-                    "Predicted Revenue"
-                ].iloc[-1]
-            )
-
-            if last_prediction > first_prediction:
-
-                trend = "📈 Increasing"
-
-            elif last_prediction < first_prediction:
-
-                trend = "📉 Decreasing"
-
-            else:
-
-                trend = "➡️ Stable"
-
-
-            col1, col2, col3 = (
-                st.columns(3)
-            )
-
-            with col1:
-
-                st.metric(
-                    "Expected 7-Day Revenue",
-                    f"₹{forecast_total:,.2f}"
-                )
-
-            with col2:
-
-                st.metric(
-                    "Average Daily Revenue",
-                    f"₹{forecast_average:,.2f}"
-                )
-
-            with col3:
-
-                st.metric(
-                    "Forecast Trend",
-                    trend
-                )
-
-
-            forecast_chart = (
-                forecast_df
-                .set_index("Date")
-            )
-
-            st.line_chart(
-                forecast_chart[
-                    "Predicted Revenue"
-                ],
-                use_container_width=True
-            )
-
-        else:
-
-            st.info(
-                "No forecast values returned."
-            )
-
+    if not st.session_state["dashboard_forecast_loaded"]:
+        st.info("Forecast is not loaded automatically to keep the dashboard fast.")
+        if st.button("🔮 Load Forecast", key="load_dashboard_forecast"):
+            st.session_state["dashboard_forecast_loaded"] = True
+            st.rerun()
     else:
+        forecast_result = cached_sales_forecast()
 
-        message = (
-            forecast_result.get(
-                "message",
-                "Forecast unavailable."
-            )
-
-            if isinstance(
+        if (
+            isinstance(
                 forecast_result,
                 dict
             )
+            and
+            forecast_result.get(
+                "status"
+            ) == "success"
+        ):
+            forecast_data = (
+                forecast_result.get(
+                    "forecast",
+                    []
+                )
+            )
 
-            else
-            "Forecast unavailable."
-        )
+            if forecast_data:
+                forecast_df = pd.DataFrame(
+                    [
+                        {
+                            "Date": item.get("date", ""),
+                            "Predicted Revenue": float(
+                                item.get("predicted_revenue", 0) or 0
+                            )
+                        }
+                        for item in forecast_data
+                    ]
+                )
 
-        st.info(message)
+                forecast_total = forecast_df["Predicted Revenue"].sum()
+                forecast_average = forecast_df["Predicted Revenue"].mean()
+                first_prediction = float(forecast_df["Predicted Revenue"].iloc[0])
+                last_prediction = float(forecast_df["Predicted Revenue"].iloc[-1])
 
+                if last_prediction > first_prediction:
+                    trend = "📈 Increasing"
+                elif last_prediction < first_prediction:
+                    trend = "📉 Decreasing"
+                else:
+                    trend = "➡️ Stable"
+
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.metric(
+                        "Expected 7-Day Revenue",
+                        f"₹{forecast_total:,.2f}"
+                    )
+
+                with col2:
+                    st.metric(
+                        "Average Daily Revenue",
+                        f"₹{forecast_average:,.2f}"
+                    )
+
+                with col3:
+                    st.metric(
+                        "Forecast Trend",
+                        trend
+                    )
+
+                forecast_chart = forecast_df.set_index("Date")
+                st.line_chart(
+                    forecast_chart["Predicted Revenue"],
+                    use_container_width=True
+                )
+            else:
+                st.info("No forecast values returned.")
+        else:
+            message = (
+                forecast_result.get("message", "Forecast unavailable.")
+                if isinstance(forecast_result, dict)
+                else "Forecast unavailable."
+            )
+            st.info(message)
 
     st.divider()
 
@@ -2047,23 +2085,23 @@ elif page == "📈 Sales Performance":
     try:
 
         today_sales = (
-            get_today_sales()
+            cached_today_sales()
         )
 
         yesterday_sales = (
-            get_yesterday_sales()
+            cached_yesterday_sales()
         )
 
         this_week = (
-            get_this_week_sales()
+            cached_this_week_sales()
         )
 
         this_month = (
-            get_this_month_sales()
+            cached_this_month_sales()
         )
 
         best_product = (
-            get_best_product_this_week()
+            cached_best_product_this_week()
         )
 
     except Exception as e:
@@ -2372,7 +2410,7 @@ elif page == "📅 Monthly Performance":
     try:
 
         comparison = (
-            compare_this_month_last_month()
+            cached_monthly_comparison()
         )
 
     except Exception as e:
@@ -2682,41 +2720,41 @@ elif page == "📆 Date Range Sales":
 
     try:
 
-        summary = get_date_range_summary(
+        summary = cached_date_range_summary(
             start_date,
             end_date
         )
 
         comparison = (
-            compare_date_range_with_previous(
+            cached_compare_date_range_with_previous(
                 start_date,
                 end_date
             )
         )
 
         daily_sales = (
-            get_sales_by_date_range(
+            cached_sales_by_date_range(
                 start_date,
                 end_date
             )
         )
 
         range_products = (
-            get_top_products_by_date_range(
+            cached_top_products_by_date_range(
                 start_date,
                 end_date
             )
         )
 
         range_payments = (
-            get_payment_analysis_by_date_range(
+            cached_payment_analysis_by_date_range(
                 start_date,
                 end_date
             )
         )
 
         range_hours = (
-            get_revenue_by_hour_date_range(
+            cached_revenue_by_hour_date_range(
                 start_date,
                 end_date
             )
@@ -3209,7 +3247,7 @@ elif page == "🧾 Sales History":
     try:
 
         sales_history = (
-            get_sales_history(100)
+            cached_sales_history(100)
         )
 
     except Exception as e:
@@ -3724,19 +3762,19 @@ elif page == "📦 Inventory Management":
     try:
 
         inventory_summary = (
-            get_inventory_summary()
+            cached_inventory_summary()
         )
 
         inventory = (
-            get_inventory()
+            cached_inventory()
         )
 
         low_stock = (
-            get_low_stock_products()
+            cached_low_stock_products()
         )
 
         out_of_stock = (
-            get_out_of_stock_products()
+            cached_out_of_stock_products()
         )
 
     except Exception as e:
@@ -4482,7 +4520,7 @@ elif page == "🛒 New Sale":
 
         # Load all products from inventory
         try:
-            available_products = get_inventory()
+            available_products = cached_inventory()
         except Exception as e:
             available_products = []
             st.error(f"Unable to load products: {e}")
@@ -6339,21 +6377,21 @@ elif page == "📋 Sales Report":
     try:
 
         report_summary = (
-            get_date_range_summary(
+            cached_date_range_summary(
                 report_start,
                 report_end
             )
         )
 
         report_sales = (
-            get_sales_by_date_range(
+            cached_sales_by_date_range(
                 report_start,
                 report_end
             )
         )
 
         report_products = (
-            get_top_products_by_date_range(
+            cached_top_products_by_date_range(
                 report_start,
                 report_end
             )
@@ -6734,23 +6772,23 @@ elif page == "💰 Profit & Loss":
     try:
 
         profit_summary = (
-            get_profit_summary()
+            cached_profit_summary()
         )
 
         product_profit = (
-            get_profit_by_product(10)
+            cached_profit_by_product(10)
         )
 
         least_profitable = (
-            get_least_profitable_products(10)
+            cached_least_profitable_products(10)
         )
 
         daily_profit = (
-            get_daily_profit(30)
+            cached_daily_profit(30)
         )
 
         monthly_profit = (
-            get_monthly_profit(12)
+            cached_monthly_profit(12)
         )
 
     except Exception as e:
@@ -7372,7 +7410,7 @@ elif page == "💰 Profit & Loss":
             try:
 
                 range_profit = (
-                    get_profit_by_date_range(
+                    cached_profit_by_date_range(
                         profit_start,
                         profit_end
                     )
